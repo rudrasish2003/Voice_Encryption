@@ -1,0 +1,51 @@
+<!-- ================= HEADER COMPONENT ================= -->
+<header class="app-header">
+  <div class="header-top-row">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" x2="12" y1="19" y2="22"></line>
+          <line x1="8" x2="16" y1="22" y2="22"></line>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">VoxMetric</span>
+        <span class="brand-tag">Voice Identification Studio</span>
+      </div>
+    </div>
+
+    <div class="user-profile-badge hidden" id="user-badge">
+      <span class="status-dot online"></span>
+      <span class="user-name" id="user-display-name">Guest</span>
+      <button type="button" class="btn-logout" id="btn-logout-mobile" title="Sign Out">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <nav class="nav-tabs hidden" id="main-nav-tabs" role="tablist" aria-label="Main Navigation">
+    <button class="tab-btn active" data-tab="tab-upload" role="tab" aria-selected="true" id="tab-btn-upload">
+      <span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+      <span class="tab-label">Register Voice</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-library" role="tab" aria-selected="false" id="tab-btn-library">
+      <span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+      <span class="tab-label">Voice Library</span>
+      <span class="badge" id="library-count-badge">0</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-analysis" role="tab" aria-selected="false" id="tab-btn-analysis">
+      <span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+      <span class="tab-label">Identify Speakers</span>
+    </button>
+  </nav>
+
+  <div class="user-profile-badge desktop-only hidden" id="user-badge-desktop">
+    <span class="status-dot online"></span>
+    <span class="user-name" id="user-display-name-desktop">Guest</span>
+    <button type="button" class="btn-logout" id="btn-logout-desktop" title="Sign Out">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</header>

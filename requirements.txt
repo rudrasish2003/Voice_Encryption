@@ -1,0 +1,30 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.17
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-jose[cryptography]==3.3.0
+cryptography==43.0.3
+pymongo==4.9.2
+numpy>=2.1.3
+soundfile>=0.13.1
+torch==2.6.0
+torchaudio==2.6.0
+pyannote.audio==3.3.2
+# pyannote.audio 3.3.2 still calls hf_hub_download(..., use_auth_token=...), a kwarg
+# removed in huggingface_hub>=1.0 -- pin below that until pyannote releases a fix.
+huggingface_hub==0.25.2
+matplotlib==3.9.2
+speechbrain==1.0.2
+python-dotenv==1.0.1
+
+# Speech-to-text for detecting spoken name introductions ("I am X") during identification.
+# (20240930's setup.py fails to build on newer setuptools -- it depends on the now-removed
+# pkg_resources module -- so this must stay on 20250625 or later.)
+openai-whisper==20250625
+
+# Makes Python trust the Windows certificate store instead of only certifi's
+# bundled CAs. Needed on machines behind a TLS-inspecting corporate/antivirus
+# proxy, where huggingface_hub downloads otherwise fail with
+# SSLCertVerificationError: self-signed certificate in certificate chain.
+pip-system-certs==5.3

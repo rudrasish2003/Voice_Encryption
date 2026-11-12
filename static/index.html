@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxMetric - Voice Identification Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Ambient Glow Accents -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- App Shell -->
+  <div class="app-shell">
+    <!-- Component Slot: Header -->
+    <div id="slot-header" data-component="components/header.html"></div>
+
+    <!-- Main Content Tab Views -->
+    <main class="main-content" id="main-content">
+      <!-- Component Slot: Tab 1 - Login Page -->
+      <div id="slot-login" data-component="components/login.html"></div>
+
+      <!-- Component Slot: Tab 2 - Register Voice -->
+      <div id="slot-upload" data-component="components/upload.html"></div>
+
+      <!-- Component Slot: Tab 3 - Voice Library -->
+      <div id="slot-library" data-component="components/library.html"></div>
+
+      <!-- Component Slot: Tab 4 - Identify Speakers -->
+      <div id="slot-analysis" data-component="components/analysis.html"></div>
+    </main>
+
+    <!-- Component Slot: Footer -->
+    <div id="slot-footer" data-component="components/footer.html"></div>
+  </div>
+
+  <!-- ================= FALLBACK TEMPLATES (Zero-CORS offline safety) ================= -->
+  <!-- Mirrors static/components/*.html so the page still works if fetch() of a
+       component fails (e.g. opened via file:// instead of served by the API). -->
+  <template id="tpl-header">
+    <header class="app-header">
+      <div class="header-top-row">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" x2="12" y1="19" y2="22"></line>
+              <line x1="8" x2="16" y1="22" y2="22"></line>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">VoxMetric</span>
+            <span class="brand-tag">Voice Identification Studio</span>
+          </div>
+        </div>
+        <div class="user-profile-badge hidden" id="user-badge">
+          <span class="status-dot online"></span>
+          <span class="user-name" id="user-display-name">Guest</span>
+          <button type="button" class="btn-logout" id="btn-logout-mobile" title="Sign Out">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <nav class="nav-tabs hidden" id="main-nav-tabs" role="tablist" aria-label="Main Navigation">
+        <button class="tab-btn active" data-tab="tab-upload" role="tab" aria-selected="true" id="tab-btn-upload">
+          <span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+          <span class="tab-label">Register Voice</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-library" role="tab" aria-selected="false" id="tab-btn-library">
+          <span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+          <span class="tab-label">Voice Library</span>
+          <span class="badge" id="library-count-badge">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-analysis" role="tab" aria-selected="false" id="tab-btn-analysis">
+          <span class="tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+          <span class="tab-label">Identify Speakers</span>
+        </button>
+      </nav>
+      <div class="user-profile-badge desktop-only hidden" id="user-badge-desktop">
+        <span class="status-dot online"></span>
+        <span class="user-name" id="user-display-name-desktop">Guest</span>
+        <button type="button" class="btn-logout" id="btn-logout-desktop" title="Sign Out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+  </template>
+
+  <template id="tpl-login">
+    <section id="tab-login" class="tab-view active" role="tabpanel" aria-labelledby="tab-btn-login">
+      <div class="login-wrapper">
+        <div class="card login-card">
+          <div class="login-header">
+            <div class="login-shield-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <h2>Account Authentication</h2>
+            <p class="subtitle">Sign in to register voices, browse the library, and run identification.</p>
+          </div>
+          <form id="login-form" class="auth-form" autocomplete="on">
+            <div class="form-group">
+              <label for="login-username">Username</label>
+              <div class="input-icon-wrapper">
+                <span class="field-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                <input type="text" id="login-username" name="username" placeholder="admin" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="label-row">
+                <label for="login-password">Password</label>
+              </div>
+              <div class="input-icon-wrapper">
+                <span class="field-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                <input type="password" id="login-password" name="password" placeholder="••••••••••••" required />
+                <button type="button" class="password-toggle" id="toggle-password" title="Toggle password visibility"><svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-closed hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9.88 9.88 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg></button>
+              </div>
+            </div>
+            <div class="form-options">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="remember-me" checked />
+                <span class="checkmark"></span>
+                <span>Keep session active</span>
+              </label>
+              <button type="button" class="btn-text-link" id="btn-fill-demo">Fill Username Only</button>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="btn-submit-login">
+              <span>Sign In to Studio</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </form>
+          <div class="login-footer">
+            <span class="security-note"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Session token stored only in this browser</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <template id="tpl-upload">
+    <section id="tab-upload" class="tab-view" role="tabpanel" aria-labelledby="tab-btn-upload">
+      <div class="page-container">
+        <div class="section-heading">
+          <div>
+            <h2>Register a Voice</h2>
+            <p class="subtitle">Enroll a person's voiceprint from a clean, single-speaker clip, or record one live.</p>
+          </div>
+          <div class="mode-pills">
+            <button class="pill active" id="mode-pill-upload" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload File</button>
+            <button class="pill" id="mode-pill-record" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="10"/></svg> Live Record</button>
+          </div>
+        </div>
+        <form id="voice-upload-form" class="upload-grid-layout">
+          <div class="card form-card">
+            <h3 class="card-title">1. Identity &amp; Consent</h3>
+            <div class="form-group">
+              <label for="reg-name">Person Name <span class="required">*</span></label>
+              <input type="text" id="reg-name" placeholder="e.g. Sanjana Dutta" required />
+              <span class="field-hint">Must be unique in the library. Registration is rejected if this voice already matches someone else.</span>
+            </div>
+            <div class="form-group">
+              <label for="reg-consent-by">Consent Given By <span class="required">*</span></label>
+              <input type="text" id="reg-consent-by" placeholder="e.g. self / HR / manager name" required />
+            </div>
+            <div class="form-group">
+              <label for="reg-consent-method">Consent Method <span class="required">*</span></label>
+              <select id="reg-consent-method" class="custom-select">
+                <option value="Verbal consent (recorded)">Verbal consent (recorded)</option>
+                <option value="Signed consent form">Signed consent form</option>
+                <option value="Email confirmation">Email confirmation</option>
+                <option value="Self-registration">Self-registration</option>
+              </select>
+            </div>
+          </div>
+          <div class="card media-card">
+            <h3 class="card-title">2. Clean, Single-Speaker Audio (&ge;30s)</h3>
+            <div id="upload-panel" class="input-panel">
+              <div class="drop-zone" id="reg-drop-zone">
+                <input type="file" id="reg-file-input" class="file-input-hidden" accept="audio/*,video/mp4,video/*,.mp4,.mp3,.wav,.m4a,.aac,.ogg,.webm" />
+                <div class="drop-zone-content">
+                  <div class="upload-icon-pulse"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                  <h4 class="drop-title">Drag &amp; Drop an audio or video file</h4>
+                  <p class="drop-sub">Supported formats: <strong class="format-highlight">MP4</strong>, MP3, WAV, M4A, OGG, WEBM</p>
+                  <button type="button" class="btn btn-secondary btn-sm" id="reg-btn-browse-file">Browse Local Files</button>
+                </div>
+              </div>
+              <div id="reg-file-preview-card" class="file-preview-card hidden">
+                <div class="file-icon-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 22h.5c.5 0 1-.2 1.4-.6.4-.4.6-.9.6-1.4V7.5L14.5 2H6c-.5 0-1 .2-1.4.6C4.2 3 4 3.5 4 4v16c0 .5.2 1 .6 1.4.4.4.9.6 1.4.6h11.5Z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12v6"/><path d="M14 15v3"/><path d="M6 18v-3"/></svg></div>
+                <div class="preview-details">
+                  <span class="preview-filename" id="reg-preview-filename">filename.mp4</span>
+                  <span class="preview-meta" id="reg-preview-meta">0 MB • Ready</span>
+                  <audio id="reg-audio-preview-player" class="audio-preview hidden" controls></audio>
+                </div>
+                <button type="button" class="btn-icon" id="reg-btn-clear-file" title="Remove selected file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>
+            </div>
+            <div id="record-panel" class="input-panel hidden">
+              <div class="recorder-box">
+                <div class="recorder-timer" id="record-timer">00:00</div>
+                <div class="record-visualizer" id="record-visualizer"><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div></div>
+                <p class="record-status" id="record-status">Click Record to capture voice from your microphone</p>
+                <div class="record-controls">
+                  <button type="button" class="btn btn-record" id="btn-toggle-record"><span class="rec-dot"></span><span id="btn-record-label">Start Recording</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="upload-action-bar">
+              <button type="submit" class="btn btn-primary btn-lg" id="btn-save-to-library"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span>Register Voice</span></button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+  </template>
+
+  <template id="tpl-library">
+    <section id="tab-library" class="tab-view" role="tabpanel" aria-labelledby="tab-btn-library">
+      <div class="page-container">
+        <div class="library-header-bar">
+          <div>
+            <h2>Voice Library</h2>
+            <p class="subtitle">People registered in the identification library (voiceprints only — no raw audio stored).</p>
+          </div>
+          <div class="library-actions">
+            <div class="search-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="library-search" placeholder="Search by name..." />
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-go-to-upload"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Register New Voice</button>
+          </div>
+        </div>
+        <div class="stats-strip">
+          <div class="stat-item"><span class="stat-value" id="stat-total-voices">0</span><span class="stat-label">Registered People</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat-item"><span class="stat-value" id="stat-total-size">0%</span><span class="stat-label">Avg Voiceprint Quality</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat-item"><span class="stat-value" id="stat-analyzed-count">0</span><span class="stat-label">Low-Confidence Entries</span></div>
+        </div>
+        <div id="voice-cards-grid" class="voice-cards-grid"></div>
+        <div id="library-empty-state" class="empty-state hidden">
+          <div class="empty-icon-box"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></div>
+          <h3>No voices registered yet</h3>
+          <p>Your library is currently empty. Register a voice in the Register Voice tab to populate your catalog.</p>
+          <button class="btn btn-primary" id="btn-empty-upload-action"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Register Your First Voice</button>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <template id="tpl-analysis">
+    <section id="tab-analysis" class="tab-view" role="tabpanel" aria-labelledby="tab-btn-analysis">
+      <div class="page-container">
+        <div class="section-heading">
+          <div>
+            <h2>Identify Speakers</h2>
+            <p class="subtitle">Upload a new recording — it's split by speaker and each voice is matched against your library.</p>
+          </div>
+        </div>
+        <div class="card analysis-control-card">
+          <div class="input-panel">
+            <div class="drop-zone" id="identify-drop-zone">
+              <input type="file" id="identify-file-input" class="file-input-hidden" accept="audio/*,video/mp4,video/*,.mp4,.mp3,.wav,.m4a,.aac,.ogg,.webm" />
+              <div class="drop-zone-content">
+                <div class="upload-icon-pulse"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                <h4 class="drop-title">Drag &amp; Drop audio or video to identify</h4>
+                <p class="drop-sub">Supported formats: <strong class="format-highlight">MP4</strong>, MP3, WAV, M4A, OGG, WEBM</p>
+                <button type="button" class="btn btn-secondary btn-sm" id="identify-btn-browse-file">Browse Local Files</button>
+              </div>
+            </div>
+            <div id="identify-file-preview-card" class="file-preview-card hidden">
+              <div class="file-icon-badge"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 22h.5c.5 0 1-.2 1.4-.6.4-.4.6-.9.6-1.4V7.5L14.5 2H6c-.5 0-1 .2-1.4.6C4.2 3 4 3.5 4 4v16c0 .5.2 1 .6 1.4.4.4.9.6 1.4.6h11.5Z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12v6"/><path d="M14 15v3"/><path d="M6 18v-3"/></svg></div>
+              <div class="preview-details">
+                <span class="preview-filename" id="identify-preview-filename">filename.mp4</span>
+                <span class="preview-meta" id="identify-preview-meta">0 MB • Ready</span>
+              </div>
+              <button type="button" class="btn-icon" id="identify-btn-clear-file" title="Remove selected file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+          </div>
+          <div class="button-align-wrapper identify-submit-row">
+            <button type="button" class="btn btn-primary btn-lg btn-analyze" id="btn-start-analysis" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Start Identification</span></button>
+          </div>
+        </div>
+        <div id="analysis-loader" class="analysis-loader-container hidden">
+          <div class="analysis-spinner-box"><div class="pulse-ring"></div><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin-icon"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>
+          <h4 id="analysis-loader-step">Queued — waiting for a worker to pick this up...</h4>
+          <div class="progress-bar-wrapper"><div class="progress-bar-fill" id="analysis-progress-bar"></div></div>
+          <p class="loader-sub" id="analysis-loader-sub">Diarization + speaker matching run on CPU; this can take a while on longer files.</p>
+        </div>
+        <div id="analysis-results-container" class="card analysis-results-card hidden">
+          <div class="results-header">
+            <div class="results-title-group">
+              <span class="status-badge success"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Identification Complete</span>
+              <h3 id="result-voice-heading">filename.mp4</h3>
+              <span class="result-timestamp" id="result-timestamp">Processed just now</span>
+            </div>
+            <div class="results-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-export-results"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export Report (JSON)</button>
+            </div>
+          </div>
+          <div class="metric-cards-grid" id="summary-cards-grid"></div>
+          <div class="breakdown-table-wrapper">
+            <h4>Per-Speaker Breakdown</h4>
+            <table class="telemetry-table">
+              <thead><tr><th>Speaker</th><th>Speech</th><th>Segments</th><th>Result</th><th>Transcript</th></tr></thead>
+              <tbody id="speaker-table-body"></tbody>
+            </table>
+          </div>
+          <div class="recommendations-box">
+            <div class="rec-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/></svg></div>
+            <div class="rec-content">
+              <h5>Summary</h5>
+              <p id="rec-text-dynamic">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <template id="tpl-footer">
+    <footer class="app-footer">
+      <span>VoxMetric • Backed by a real diarization + speaker-matching API</span>
+      <span class="footer-dot">•</span>
+      <span>No raw audio is ever stored</span>
+    </footer>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
