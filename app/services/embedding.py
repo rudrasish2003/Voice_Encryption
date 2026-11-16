@@ -1,4 +1,8 @@
-"""Speaker-embedding extraction via SpeechBrain's ECAPA-TDNN model (CPU-only).
+"""Speaker-embedding extraction via SpeechBrain's ECAPA-TDNN model.
+
+CPU by default. The `device` param exists so this exact code can also run
+inside the Modal GPU container (see modal_app.py) with device="cuda" -- one
+implementation, two places it runs.
 
 Embeddings are L2-normalized so cosine similarity reduces to a dot product
 (see matching.py).
@@ -10,8 +14,8 @@ import numpy as np
 from app.utils.torch_compat import patch_torch_load
 
 
-@lru_cache(maxsize=1)
-def _get_model(model_name: str):
+@lru_cache(maxsize=4)
+def _get_model(model_name: str, device: str = "cpu"):
     patch_torch_load()
     from speechbrain.inference.speaker import EncoderClassifier
     from speechbrain.utils.fetching import LocalStrategy
@@ -20,20 +24,20 @@ def _get_model(model_name: str):
     return EncoderClassifier.from_hparams(
         source=model_name,
         savedir=savedir,
-        run_opts={"device": "cpu"},
+        run_opts={"device": device},
         # Symlinking the HF cache into savedir needs Developer Mode / admin on
         # Windows; copy the files instead so this works out of the box.
         local_strategy=LocalStrategy.COPY,
     )
 
 
-def embed_waveform(samples: np.ndarray, sr: int, model_name: str) -> np.ndarray:
+def embed_waveform(samples: np.ndarray, sr: int, model_name: str, device: str = "cpu") -> np.ndarray:
     import torch
 
     if sr != 16000:
         raise ValueError(f"expected 16kHz audio, got {sr}Hz -- normalize first")
 
-    model = _get_model(model_name)
+    model = _get_model(model_name, device)
     tensor = torch.from_numpy(np.ascontiguousarray(samples)).float().unsqueeze(0)
     with torch.no_grad():
         emb = model.encode_batch(tensor)

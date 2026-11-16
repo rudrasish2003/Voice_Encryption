@@ -52,7 +52,10 @@ def run() -> None:
             logger.info("job %s done", job_id)
         except Exception as exc:  # noqa: BLE001 - job failures must not kill the worker loop
             logger.exception("job %s failed", job_id)
-            jobs_repo.fail_job(job_id, str(exc))
+            try:
+                jobs_repo.fail_job(job_id, str(exc))
+            except Exception:  # noqa: BLE001 - even a DB write failure here must not kill the loop
+                logger.exception("job %s: also failed to record the failure in Mongo", job_id)
         finally:
             if os.path.exists(stored_path):
                 os.unlink(stored_path)

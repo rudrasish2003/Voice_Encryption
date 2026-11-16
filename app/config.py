@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     hf_token: str = ""
 
     diarization_model: str = "pyannote/speaker-diarization-3.1"
+    diarization_min_speakers: int = 1  # Skip clustering on likely single-speaker clips
+    diarization_max_speakers: int = 4  # Bound VBx search space for faster convergence
     embedding_model: str = "speechbrain/spkrec-ecapa-voxceleb"
 
     match_threshold: float = 0.70
@@ -52,6 +54,13 @@ class Settings(BaseSettings):
     # Per-speaker audio snippets kept only so a reviewer can play back a speaker's
     # voice at the results screen; auto-deleted by the worker after this many hours.
     audio_snippet_retention_hours: float = 6.0
+
+    # --- Modal GPU offload (see modal_app.py + app/services/pipeline_dispatch.py) ---
+    # When true, diarization/transcription/embedding run on a Modal GPU container
+    # instead of locally on CPU. Requires `modal deploy modal_app.py` to have been
+    # run, and a "voice-biometric-hf-token" Modal secret holding HF_TOKEN.
+    use_modal_gpu: bool = False
+    modal_app_name: str = "voice-biometric-gpu"
 
 
 @lru_cache

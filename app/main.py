@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.api import audit, auth, health, identify, people
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 app = FastAPI(title="Voice Identification API", version="0.1.0")
 

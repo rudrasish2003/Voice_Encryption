@@ -11,12 +11,10 @@ import numpy as np
 from app.config import get_settings
 from app.repos.audio_snippets_repo import AudioSnippetsRepo
 from app.repos.pending_embeddings_repo import PendingEmbeddingsRepo
-from app.services.diarization import diarize
-from app.services.embedding import embed_waveform
 from app.services.matching import Matcher
 from app.services.name_extraction import group_transcript_by_speaker, resolve_claimed_speakers
+from app.services.pipeline_dispatch import diarize, embed_batch, transcribe
 from app.services.registration import check_duplicate
-from app.services.transcription import transcribe
 from app.utils.audio import extract_segments, normalize_to_wav, read_audio
 
 logger = logging.getLogger("identify_worker")
@@ -38,7 +36,8 @@ def identify_file(raw_path: str, matcher: Matcher, job_id: str) -> list[dict]:
     try:
         samples, sr = read_audio(wav_path)
         duration_sec = len(samples) / sr if sr else 0.0
-        logger.info("job %s: %.1fs of audio, running diarization (this is the slow part on CPU)...", job_id, duration_sec)
+        engine = "Modal GPU" if settings.use_modal_gpu else "local CPU"
+        logger.info("job %s: %.1fs of audio, running diarization on %s...", job_id, duration_sec, engine)
 
         t_stage = time.monotonic()
         segments = diarize(wav_path, settings.diarization_model, settings.hf_token)
@@ -54,7 +53,7 @@ def identify_file(raw_path: str, matcher: Matcher, job_id: str) -> list[dict]:
         claims: dict[str, dict] = {}
         transcript_by_speaker: dict[str, list[dict]] = {}
         if settings.enable_spoken_name_labeling and segments:
-            logger.info("job %s: transcribing (whisper '%s', also CPU-bound)...", job_id, settings.whisper_model)
+            logger.info("job %s: transcribing on %s...", job_id, engine)
             t_stage = time.monotonic()
             transcript_segments = transcribe(wav_path, settings.whisper_model)
             logger.info("job %s: transcription done in %.1fs", job_id, time.monotonic() - t_stage)
@@ -62,8 +61,13 @@ def identify_file(raw_path: str, matcher: Matcher, job_id: str) -> list[dict]:
             transcript_by_speaker = group_transcript_by_speaker(transcript_segments, segments)
 
         logger.info("job %s: embedding + matching %d speaker(s)...", job_id, len(by_speaker))
-        results = []
+        results_by_label: dict[str, dict] = {}
         first_seen: dict[str, float] = {}
+        # (label, total_speech, speaker_samples) for speakers that clear the speech bar --
+        # embedded together in one batch below instead of one-by-one, so the Modal GPU
+        # path makes a single container call for every speaker in this file.
+        pending_embed: list[tuple[str, float, np.ndarray]] = []
+
         for label, segs in by_speaker.items():
             first_seen[label] = min(s["start"] for s in segs)
             total_speech = sum(s["end"] - s["start"] for s in segs)
@@ -80,27 +84,34 @@ def identify_file(raw_path: str, matcher: Matcher, job_id: str) -> list[dict]:
                 result["match"] = _no_match("insufficient_speech")
                 result["embeddable"] = False
                 result["playable"] = False
-                results.append(result)
-                continue
+            else:
+                speaker_samples = extract_segments(samples, sr, segs, cap_sec=settings.max_identify_speech_sec)
+                pending_embed.append((label, total_speech, speaker_samples))
 
-            speaker_samples = extract_segments(samples, sr, segs, cap_sec=settings.max_identify_speech_sec)
-            vec = embed_waveform(speaker_samples, sr, settings.embedding_model)
-            match = _decide(matcher, vec, settings)
+            results_by_label[label] = result
 
-            claim = claims.get(label)
-            if claim and match["decision"] != "matched":
-                match = _apply_claim(matcher, vec, claim, total_speech, settings, match)
+        if pending_embed:
+            t_stage = time.monotonic()
+            vectors = embed_batch([s for _, _, s in pending_embed], sr, settings.embedding_model)
+            logger.info("job %s: embedded %d speaker(s) in %.1fs", job_id, len(pending_embed), time.monotonic() - t_stage)
 
-            result["match"] = match
-            result["embeddable"] = match["decision"] in ENROLLABLE_DECISIONS
-            if result["embeddable"]:
-                pending_repo.save(job_id, label, vec, total_speech, match.get("claimed_name"))
+            for (label, total_speech, speaker_samples), vec in zip(pending_embed, vectors):
+                result = results_by_label[label]
+                match = _decide(matcher, vec, settings)
 
-            snippets_repo.save(job_id, label, speaker_samples, sr)
-            result["playable"] = True
+                claim = claims.get(label)
+                if claim and match["decision"] != "matched":
+                    match = _apply_claim(matcher, vec, claim, total_speech, settings, match)
 
-            results.append(result)
+                result["match"] = match
+                result["embeddable"] = match["decision"] in ENROLLABLE_DECISIONS
+                if result["embeddable"]:
+                    pending_repo.save(job_id, label, vec, total_speech, match.get("claimed_name"))
 
+                snippets_repo.save(job_id, label, speaker_samples, sr)
+                result["playable"] = True
+
+        results = list(results_by_label.values())
         _assign_display_names(results, first_seen)
         logger.info("job %s: done in %.1fs total", job_id, time.monotonic() - t0)
         return results

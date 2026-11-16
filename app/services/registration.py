@@ -8,7 +8,9 @@ and build the voiceprint from only their audio -- and reject only when no
 speaker clearly dominates, which is the real signature of a genuine
 multi-person recording.
 """
+import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -16,9 +18,10 @@ import numpy as np
 
 from app.config import get_settings
 from app.repos.people_repo import PeopleRepo
-from app.services.diarization import diarize
-from app.services.embedding import embed_waveform
+from app.services.pipeline_dispatch import diarize, embed_waveform
 from app.utils.audio import detect_clipping, duration_sec, estimate_snr_db, extract_segments, normalize_to_wav, read_audio
+
+logger = logging.getLogger("identify_worker")
 
 
 class RegistrationError(Exception):
@@ -53,6 +56,7 @@ class ClipAnalysis:
 
 
 def analyze_clip(raw_path: str, settings) -> ClipAnalysis:
+    t0 = time.monotonic()
     wav_path = normalize_to_wav(raw_path)
     try:
         samples, sr = read_audio(wav_path)
@@ -60,7 +64,11 @@ def analyze_clip(raw_path: str, settings) -> ClipAnalysis:
         snr_db = estimate_snr_db(samples, sr)
         clipping = detect_clipping(samples)
 
+        engine = "Modal GPU" if settings.use_modal_gpu else "local CPU"
+        logger.info("registration: %.1fs of audio, running diarization on %s...", total_dur, engine)
+        t_stage = time.monotonic()
         segments = diarize(wav_path, settings.diarization_model, settings.hf_token)
+        logger.info("registration: diarization done in %.1fs", time.monotonic() - t_stage)
         if segments:
             by_speaker: dict[str, list[dict]] = {}
             for seg in segments:
@@ -80,6 +88,7 @@ def analyze_clip(raw_path: str, settings) -> ClipAnalysis:
             dominant_ratio = 1.0
             speaker_count = 1
 
+        logger.info("registration: analyze_clip total %.1fs", time.monotonic() - t0)
         return ClipAnalysis(
             wav_path=wav_path,
             dominant_samples=dominant_samples,
@@ -116,7 +125,9 @@ def build_voiceprint(clip_paths: list[str]) -> tuple[np.ndarray, float, list[Cli
         for p in clip_paths:
             analysis = analyze_clip(p, settings)
             validate_clip(analysis, settings)
+            t_stage = time.monotonic()
             analysis.embedding = embed_waveform(analysis.dominant_samples, analysis.sr, settings.embedding_model)
+            logger.info("registration: embedding done in %.1fs", time.monotonic() - t_stage)
             analyses.append(analysis)
 
         total_speech = sum(a.speech_duration_sec for a in analyses)
