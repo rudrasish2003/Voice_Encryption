@@ -1,12 +1,31 @@
-version: "3.8"
+# MongoDB is NOT run here. Point MONGO_URI in .env at an external instance (e.g. Atlas).
+# The port is taken from PORT in .env (default 8000).
+x-app: &app
+  image: voice_encryption:latest
+  env_file: .env
+  environment:
+    DATA_DIR: /srv/data
+  volumes:
+    - ./data:/srv/data
+    - hf_cache:/root/.cache
+  restart: unless-stopped
+
 services:
-  mongo:
-    image: mongo:7
-    restart: unless-stopped
+  api:
+    <<: *app
+    build:
+      context: .
+      args:
+        WITH_LOCAL_ML: ${WITH_LOCAL_ML:-false}
+    command: ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $${PORT:-8000}"]
     ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+      - "${PORT:-8000}:${PORT:-8000}"
+
+  worker:
+    <<: *app
+    pull_policy: never
+    depends_on: [api]
+    command: ["python", "-m", "app.workers.identify_worker"]
 
 volumes:
-  mongo_data:
+  hf_cache:

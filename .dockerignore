@@ -1,0 +1,10 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+data
+pretrained_models
+.env
+*.md
+*.ipynb
