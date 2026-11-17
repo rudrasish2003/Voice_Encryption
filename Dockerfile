@@ -20,6 +20,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---- runtime: no compilers, no uv, no caches ----
 FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1 PATH="/srv/.venv/bin:$PATH"
+# ffmpeg is required for audio normalization (subprocess), libsndfile1 for soundfile I/O.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg libsndfile1 \
     && rm -rf /var/lib/apt/lists/*

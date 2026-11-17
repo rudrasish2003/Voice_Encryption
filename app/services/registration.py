@@ -57,7 +57,15 @@ class ClipAnalysis:
 
 def analyze_clip(raw_path: str, settings) -> ClipAnalysis:
     t0 = time.monotonic()
-    wav_path = normalize_to_wav(raw_path)
+    try:
+        wav_path = normalize_to_wav(raw_path)
+    except FileNotFoundError as e:
+        raise RegistrationError(
+            "ffmpeg_missing",
+            "ffmpeg is not installed or not on PATH; install ffmpeg and restart the server to process audio.",
+        ) from e
+    except ValueError as e:
+        raise RegistrationError("invalid_audio", f"could not process audio: {e}") from e
     try:
         samples, sr = read_audio(wav_path)
         total_dur = duration_sec(samples, sr)
@@ -100,6 +108,14 @@ def analyze_clip(raw_path: str, settings) -> ClipAnalysis:
             clipping_detected=clipping,
             speaker_count=speaker_count,
         )
+    except RegistrationError:
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+        raise
+    except RuntimeError as e:
+        if os.path.exists(wav_path):
+            os.unlink(wav_path)
+        raise RegistrationError("pipeline_unavailable", str(e)) from e
     except Exception:
         if os.path.exists(wav_path):
             os.unlink(wav_path)
@@ -126,7 +142,10 @@ def build_voiceprint(clip_paths: list[str]) -> tuple[np.ndarray, float, list[Cli
             analysis = analyze_clip(p, settings)
             validate_clip(analysis, settings)
             t_stage = time.monotonic()
-            analysis.embedding = embed_waveform(analysis.dominant_samples, analysis.sr, settings.embedding_model)
+            try:
+                analysis.embedding = embed_waveform(analysis.dominant_samples, analysis.sr, settings.embedding_model)
+            except RuntimeError as e:
+                raise RegistrationError("pipeline_unavailable", str(e)) from e
             logger.info("registration: embedding done in %.1fs", time.monotonic() - t_stage)
             analyses.append(analysis)
 

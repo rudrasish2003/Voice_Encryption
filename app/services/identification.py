@@ -32,7 +32,14 @@ def identify_file(raw_path: str, matcher: Matcher, job_id: str) -> list[dict]:
 
     t0 = time.monotonic()
     logger.info("job %s: converting audio...", job_id)
-    wav_path = normalize_to_wav(raw_path)
+    try:
+        wav_path = normalize_to_wav(raw_path)
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            "ffmpeg is not installed or not on PATH; install ffmpeg and restart the server to process audio."
+        ) from e
+    except ValueError as e:
+        raise RuntimeError(f"could not process audio: {e}") from e
     try:
         samples, sr = read_audio(wav_path)
         duration_sec = len(samples) / sr if sr else 0.0
@@ -116,7 +123,7 @@ def identify_file(raw_path: str, matcher: Matcher, job_id: str) -> list[dict]:
         logger.info("job %s: done in %.1fs total", job_id, time.monotonic() - t0)
         return results
     finally:
-        if os.path.exists(wav_path):
+        if "wav_path" in locals() and os.path.exists(wav_path):
             os.unlink(wav_path)
 
 

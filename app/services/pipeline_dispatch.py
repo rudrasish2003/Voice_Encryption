@@ -15,7 +15,15 @@ def diarize(wav_path: str, model_name: str, hf_token: str) -> list[dict]:
         from app.services.gpu_client import diarize_remote
 
         return diarize_remote(wav_path)
-    from app.services.diarization import diarize as _local_diarize
+    try:
+        from app.services.diarization import diarize as _local_diarize
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            "Local ML dependencies are not installed (missing module: "
+            f"{e.name}). Set USE_MODAL_GPU=true to use the Modal GPU pipeline, "
+            "or rebuild/install with local ML support (e.g. Docker build arg WITH_LOCAL_ML=true "
+            "or `uv sync --extra local-ml`)."
+        ) from e
 
     return _local_diarize(wav_path, model_name, hf_token)
 
@@ -29,7 +37,15 @@ def transcribe(wav_path: str, model_name: str) -> list[dict]:
         from app.services.gpu_client import transcribe_remote
 
         return transcribe_remote(wav_path)
-    from app.services.transcription import transcribe as _local_transcribe
+    try:
+        from app.services.transcription import transcribe as _local_transcribe
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            "Local ML dependencies are not installed (missing module: "
+            f"{e.name}). Set USE_MODAL_GPU=true to use the Modal GPU pipeline, "
+            "or rebuild/install with local ML support (e.g. Docker build arg WITH_LOCAL_ML=true "
+            "or `uv sync --extra local-ml`)."
+        ) from e
 
     return _local_transcribe(wav_path, model_name)
 
@@ -48,6 +64,14 @@ def embed_batch(samples_list: list[np.ndarray], sr: int, model_name: str) -> lis
         from app.services.gpu_client import embed_batch_remote
 
         return embed_batch_remote(samples_list, sr)
-    from app.services.embedding import embed_waveform as _local_embed
+    try:
+        from app.services.embedding import embed_waveform as _local_embed
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            "Local ML dependencies are not installed (missing module: "
+            f"{e.name}). Set USE_MODAL_GPU=true to use the Modal GPU pipeline, "
+            "or rebuild/install with local ML support (e.g. Docker build arg WITH_LOCAL_ML=true "
+            "or `uv sync --extra local-ml`)."
+        ) from e
 
     return [_local_embed(s, sr, model_name) for s in samples_list]

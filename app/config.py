@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     # voice at the results screen; auto-deleted by the worker after this many hours.
     audio_snippet_retention_hours: float = 6.0
 
+    # --- Identify upload handoff storage (API -> worker) ---
+    # "local": save to <data_dir>/pending_uploads (requires shared filesystem between API and worker)
+    # "s3": upload to S3 and have the worker download for processing (no shared filesystem needed)
+    identify_upload_backend: str = "local"
+    s3_bucket: str = ""
+    s3_region: str = ""
+    s3_prefix: str = "identify/pending_uploads/"
+    s3_endpoint_url: str = ""
+
     # --- Modal GPU offload (see modal_app.py + app/services/pipeline_dispatch.py) ---
     # When true, diarization/transcription/embedding run on a Modal GPU container
     # instead of locally on CPU. Requires `modal deploy modal_app.py` to have been

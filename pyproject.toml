@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.11,<3.12"
 
 # Lightweight core: API + worker when USE_MODAL_GPU=true (ML runs on Modal).
+# System dependency (not a Python package): ffmpeg must be installed for audio normalization.
+# The Docker runtime image installs it via apt; install it locally before running outside Docker.
 dependencies = [
     "fastapi==0.115.6",
     "uvicorn[standard]==0.32.1",
@@ -19,6 +21,7 @@ dependencies = [
     "soundfile>=0.13.1",
     "python-dotenv==1.0.1",
     "modal",
+    "boto3>=1.35.0",
     # Trust the Windows certificate store (TLS-inspecting corporate/antivirus proxies)
     "pip-system-certs==5.3; sys_platform == 'win32'",
 ]

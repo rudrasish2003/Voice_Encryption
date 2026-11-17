@@ -1,5 +1,3 @@
-import os
-import tempfile
 from datetime import datetime, timezone
 from typing import List
 
@@ -11,6 +9,7 @@ from app.config import get_settings
 from app.models.schemas import EnrollSpeakerIn, IdentifyJobOut, IdentifySubmitOut, PersonOut
 from app.repos.audio_snippets_repo import AudioSnippetsRepo
 from app.repos.audit_repo import AuditRepo
+from app.repos.identify_uploads_repo import store_upload
 from app.repos.jobs_repo import JobsRepo
 from app.repos.pending_embeddings_repo import PendingEmbeddingsRepo
 from app.repos.people_repo import PeopleRepo
@@ -32,9 +31,6 @@ async def submit_identification(
     payload: dict = Depends(require_scopes("identify:write")),
 ):
     settings = get_settings()
-    upload_dir = os.path.join(settings.data_dir, "pending_uploads")
-    os.makedirs(upload_dir, exist_ok=True)
-
     actor = payload.get("sub", "unknown")
     job_ids = []
     for f in files:
@@ -44,12 +40,21 @@ async def submit_identification(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail={"reason_code": "unsupported_format", "message": "file exceeds max upload size"},
             )
-        suffix = os.path.splitext(f.filename or "")[1] or ".wav"
-        fd, tmp_path = tempfile.mkstemp(suffix=suffix, dir=upload_dir)
-        with os.fdopen(fd, "wb") as out:
-            out.write(content)
+        try:
+            input_meta = store_upload(content, f.filename)
+        except RuntimeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"reason_code": "upload_storage_error", "message": str(e)},
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"reason_code": "upload_storage_error", "message": f"failed to store upload: {e}"},
+            )
 
-        job_id = jobs_repo.create_job({"filename": f.filename, "stored_path": tmp_path, "submitted_by": actor})
+        input_meta["submitted_by"] = actor
+        job_id = jobs_repo.create_job(input_meta)
         job_ids.append(job_id)
 
     audit_repo.log("identify", actor, details={"job_ids": job_ids})

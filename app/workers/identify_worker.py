@@ -3,12 +3,12 @@
 Run as a separate process: python -m app.workers.identify_worker
 """
 import logging
-import os
 import time
 import uuid
 
 from app.config import get_settings
 from app.repos.audio_snippets_repo import AudioSnippetsRepo
+from app.repos.identify_uploads_repo import cleanup_upload, resolve_to_local_path
 from app.repos.jobs_repo import JobsRepo
 from app.services.identification import identify_file
 from app.services.matching import get_matcher
@@ -43,11 +43,15 @@ def run() -> None:
             continue
 
         job_id = job["_id"]
-        stored_path = job["input_meta"]["stored_path"]
-        logger.info("processing job %s (%s)", job_id, stored_path)
+        input_meta = job.get("input_meta") or {}
+        source_desc = input_meta.get("s3_key") or input_meta.get("stored_path") or "<unknown>"
+        logger.info("processing job %s (%s)", job_id, source_desc)
+        local_path = None
+        local_is_temp = False
         try:
+            local_path, local_is_temp = resolve_to_local_path(input_meta)
             matcher.refresh()
-            results = identify_file(stored_path, matcher, job_id)
+            results = identify_file(local_path, matcher, job_id)
             jobs_repo.complete_job(job_id, results)
             logger.info("job %s done", job_id)
         except Exception as exc:  # noqa: BLE001 - job failures must not kill the worker loop
@@ -57,8 +61,10 @@ def run() -> None:
             except Exception:  # noqa: BLE001 - even a DB write failure here must not kill the loop
                 logger.exception("job %s: also failed to record the failure in Mongo", job_id)
         finally:
-            if os.path.exists(stored_path):
-                os.unlink(stored_path)
+            try:
+                cleanup_upload(input_meta, local_path=local_path, local_is_temp=local_is_temp)
+            except Exception:  # noqa: BLE001
+                logger.exception("job %s: failed to clean up input upload", job_id)
 
 
 if __name__ == "__main__":

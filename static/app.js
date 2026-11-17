@@ -77,7 +77,11 @@ async function apiFetch(path, options = {}) {
 function extractErrorMessage(detail, fallback) {
   if (!detail) return fallback;
   if (typeof detail === "string") return detail;
-  if (typeof detail === "object") return detail.message || JSON.stringify(detail);
+  if (typeof detail === "object") {
+    const msg = detail.message || JSON.stringify(detail);
+    if (detail.reason_code) return `[${detail.reason_code}] ${msg}`;
+    return msg;
+  }
   return fallback;
 }
 
@@ -278,7 +282,27 @@ function wireRegisterTab() {
   document.getElementById("voice-upload-form")?.addEventListener("submit", submitRegistration);
 }
 
+function setRegStatus(type, message) {
+  const el = document.getElementById("reg-status");
+  if (!el) return;
+  el.classList.remove("hidden", "loading", "error", "success");
+  if (type) el.classList.add(type);
+  if (type === "loading") {
+    el.innerHTML = `<span class="reg-status-spinner" aria-hidden="true"></span><span>${escapeHtml(message)}</span>`;
+  } else {
+    el.textContent = message || "";
+  }
+}
+
+function clearRegStatus() {
+  const el = document.getElementById("reg-status");
+  if (!el) return;
+  el.className = "reg-status hidden";
+  el.textContent = "";
+}
+
 function setRegMode(mode) {
+  clearRegStatus();
   document.getElementById("mode-pill-upload")?.classList.toggle("active", mode === "upload");
   document.getElementById("mode-pill-record")?.classList.toggle("active", mode === "record");
   document.getElementById("upload-panel")?.classList.toggle("hidden", mode !== "upload");
@@ -286,6 +310,7 @@ function setRegMode(mode) {
 }
 
 function setRegFile(file) {
+  clearRegStatus();
   regSelectedFile = file;
   document.getElementById("reg-drop-zone").classList.add("hidden");
   const card = document.getElementById("reg-file-preview-card");
@@ -301,6 +326,7 @@ function setRegFile(file) {
 }
 
 function clearRegFile() {
+  clearRegStatus();
   regSelectedFile = null;
   document.getElementById("reg-drop-zone").classList.remove("hidden");
   document.getElementById("reg-file-preview-card").classList.add("hidden");
@@ -369,12 +395,18 @@ async function submitRegistration(e) {
   const consentMethod = document.getElementById("reg-consent-method").value;
   const submitBtn = document.getElementById("btn-save-to-library");
 
+  clearRegStatus();
+
   if (!name || !consentBy) {
-    toast("Please fill in person name and consent fields.", "error");
+    const msg = "Please fill in person name and consent fields.";
+    setRegStatus("error", msg);
+    toast(msg, "error");
     return;
   }
   if (!regSelectedFile) {
-    toast("Please upload or record an audio clip first.", "error");
+    const msg = "Please upload or record an audio clip first.";
+    setRegStatus("error", msg);
+    toast(msg, "error");
     return;
   }
 
@@ -385,20 +417,26 @@ async function submitRegistration(e) {
   form.append("files", regSelectedFile, regSelectedFile.name || "clip.webm");
 
   submitBtn.disabled = true;
+  submitBtn.setAttribute("aria-busy", "true");
   submitBtn.querySelector("span").textContent = "Registering…";
+  setRegStatus("loading", "Registering voice… This may take a minute while audio is processed.");
   try {
     const res = await apiFetch("/api/v1/people", { method: "POST", body: form });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error(extractErrorMessage(data?.detail, "Registration failed"));
 
+    clearRegStatus();
     toast(`Registered "${data.name}" (quality ${(data.quality_score * 100).toFixed(0)}%).`, "success");
     document.getElementById("voice-upload-form").reset();
     clearRegFile();
     switchTab("tab-library");
   } catch (err) {
-    toast("Registration failed: " + err.message, "error");
+    const msg = err?.message || "Registration failed";
+    setRegStatus("error", msg);
+    toast("Registration failed: " + msg, "error");
   } finally {
     submitBtn.disabled = false;
+    submitBtn.removeAttribute("aria-busy");
     submitBtn.querySelector("span").textContent = "Register Voice";
   }
 }
